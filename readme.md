@@ -277,7 +277,6 @@ station/
 ├── planner/           # Station index, KD-tree corridor matching, fuel optimizer, trip planning service
 ├── api/               # DRF endpoint, serializers, error handler, map page and Swagger wiring
 ├── data/              # Fuel price CSV and the geocode cache
-└── docs/images/       # README screenshots
 ```
 
 Two management commands are handy for debugging: `python manage.py route_debug "Chicago, IL" "Dallas, TX"`
