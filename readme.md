@@ -14,7 +14,8 @@ along the way (500-mile range), and the total fuel bill at 10 MPG.
 ![SciPy](https://img.shields.io/badge/SciPy-KD--tree-8CAAE6?logo=scipy&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)
 
-![Station map view](docs/images/map.png)
+<img width="500" height="500" alt="station API demo screenshot" src="https://github.com/user-attachments/assets/25f49557-c305-4b93-b3b2-821d9e934884" />
+
 
 </div>
 
@@ -251,7 +252,6 @@ dominated by the one directions call to the routing provider.
 python manage.py test
 ```
 
-![Test run](docs/images/tests.png)
 
 The suite has 51 tests covering:
 
