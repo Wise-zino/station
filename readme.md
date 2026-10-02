@@ -113,7 +113,7 @@ holds 6,600+ points. Plain Python loops over that would dominate the response ti
 ### Installation
 
 ```bash
-git clone <repo-url> station && cd station
+git clone github.com/Wise-zino/station station && cd station
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
