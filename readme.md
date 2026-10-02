@@ -14,7 +14,8 @@ along the way (500-mile range), and the total fuel bill at 10 MPG.
 ![SciPy](https://img.shields.io/badge/SciPy-KD--tree-8CAAE6?logo=scipy&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)
 
-![Station map view](docs/images/map.png)
+<img width="500" height="500" alt="station API demo screenshot" src="https://github.com/user-attachments/assets/25f49557-c305-4b93-b3b2-821d9e934884" />
+
 
 </div>
 
@@ -112,7 +113,7 @@ holds 6,600+ points. Plain Python loops over that would dominate the response ti
 ### Installation
 
 ```bash
-git clone <repo-url> station && cd station
+git clone github.com/Wise-zino/station station && cd station
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
@@ -251,7 +252,6 @@ dominated by the one directions call to the routing provider.
 python manage.py test
 ```
 
-![Test run](docs/images/tests.png)
 
 The suite has 51 tests covering:
 
@@ -277,7 +277,6 @@ station/
 ├── planner/           # Station index, KD-tree corridor matching, fuel optimizer, trip planning service
 ├── api/               # DRF endpoint, serializers, error handler, map page and Swagger wiring
 ├── data/              # Fuel price CSV and the geocode cache
-└── docs/images/       # README screenshots
 ```
 
 Two management commands are handy for debugging: `python manage.py route_debug "Chicago, IL" "Dallas, TX"`
