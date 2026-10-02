@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Station - fuel route map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #111827; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 10px 14px; background: #111827; color: #fff; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    header strong { font-size: 16px; margin-right: 6px; }
+    header form { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+    header input { padding: 7px 9px; border-radius: 6px; border: 0; min-width: 190px; flex: 1; max-width: 280px; }
+    header button { padding: 7px 14px; border: 0; border-radius: 6px; background: #f59e0b; font-weight: 600; cursor: pointer; }
+    .error { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-bottom: 1px solid #fecaca; }
+    main { flex: 1; display: flex; min-height: 0; }
+    #side { width: 340px; overflow-y: auto; padding: 14px; border-right: 1px solid #e5e7eb; }
+    #map { flex: 1; }
+    .stat { display: flex; justify-content: space-between; padding: 3px 0; }
+    .stat b { font-variant-numeric: tabular-nums; }
+    .total { font-size: 20px; margin: 8px 0 12px; }
+    .stop { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+    .stop h4 { margin: 0 0 2px; font-size: 13px; }
+    .stop small { color: #6b7280; }
+    .pin { width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+    .empty { padding: 24px; color: #6b7280; }
+    @media (max-width: 760px) { main { flex-direction: column-reverse; } #side { width: 100%; max-height: 40%; border-right: 0; border-top: 1px solid #e5e7eb; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Station</strong>
+    <form method="get" action="">
+      <input name="start" value="{{ start }}" placeholder="Start, e.g. New York, NY" required>
+      <input name="finish" value="{{ finish }}" placeholder="Finish, e.g. Los Angeles, CA" required>
+      <button type="submit">Plan route</button>
+    </form>
+  </header>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  {% if trip %}
+    <main>
+      <aside id="side"></aside>
+      <div id="map"></div>
+    </main>
+    {{ trip|json_script:"trip-data" }}
+    {{ tiles|json_script:"tile-config" }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+      const trip = JSON.parse(document.getElementById('trip-data').textContent);
+      const tiles = JSON.parse(document.getElementById('tile-config').textContent);
+
+      // ---- helpers (textContent only, so station names can never inject HTML) ----
+      function el(tag, text, cls) {
+        const n = document.createElement(tag);
+        if (text !== undefined) n.textContent = text;
+        if (cls) n.className = cls;
+        return n;
+      }
+      const usd = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      function stopLines(s) {
+        const where = [s.city, s.state].filter(Boolean).join(', ');
+        return [
+          s.kind === 'origin' ? 'Departure fill-up' : (where + (s.address ? ' - ' + s.address : '')),
+          'Mile ' + s.route_mile.toLocaleString('en-US') + (s.kind === 'station' ? ' (' + s.miles_off_route + ' mi off route)' : ''),
+          s.gallons.toFixed(2) + ' gal @ $' + s.price_per_gallon.toFixed(3) + ' = ' + usd(s.cost)
+        ];
+      }
+      function pin(label, color) {
+        return L.divIcon({ className: '', html: '<div class="pin" style="background:' + color + '">' + label + '</div>',
+                           iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14] });
+      }
+      function popup(title, lines) {
+        const box = el('div');
+        box.appendChild(el('strong', title));
+        lines.forEach(t => { box.appendChild(document.createElement('br')); box.appendChild(document.createTextNode(t)); });
+        return box;
+      }
+
+      // ---- map ----
+      const map = L.map('map');
+      L.tileLayer(tiles.url, { maxZoom: 19, attribution: tiles.attribution }).addTo(map);
+
+      const latlngs = trip.route.geometry.coordinates.map(c => [c[1], c[0]]);
+      const line = L.polyline(latlngs, { weight: 5, color: '#2563eb', opacity: 0.85 }).addTo(map);
+      map.fitBounds(line.getBounds(), { padding: [30, 30] });
+
+      const origin = trip.fuel_stops.find(s => s.kind === 'origin');
+      L.marker([trip.start.lat, trip.start.lon], { icon: pin('S', '#16a34a') }).addTo(map)
+        .bindPopup(popup('Start', [trip.start.label].concat(origin ? stopLines(origin).slice(1) : [])));
+      L.marker([trip.finish.lat, trip.finish.lon], { icon: pin('F', '#dc2626') }).addTo(map)
+        .bindPopup(popup('Finish', [trip.finish.label]));
+
+      let n = 0;
+      trip.fuel_stops.filter(s => s.kind === 'station').forEach(s => {
+        n += 1;
+        L.marker([s.lat, s.lon], { icon: pin(String(n), '#f59e0b') }).addTo(map)
+          .bindPopup(popup(s.name, stopLines(s)));
+      });
+
+      // ---- sidebar ----
+      const side = document.getElementById('side');
+      const sum = trip.summary;
+      side.appendChild(el('div', usd(sum.total_fuel_cost) + ' total fuel', 'total'));
+      [['Distance', trip.route.distance_miles.toLocaleString('en-US') + ' mi'],
+       ['Drive time', trip.route.duration_hours + ' h'],
+       ['Fuel needed', sum.total_gallons + ' gal @ ' + sum.mpg + ' mpg'],
+       ['Max range', sum.vehicle_range_miles + ' mi'],
+       ['API calls made', String(trip.meta.external_api_calls) + (trip.meta.route_cached ? ' (route cached)' : '')],
+       ['Response time', trip.meta.timings_ms.total + ' ms']
+      ].forEach(([k, v]) => {
+        const row = el('div', undefined, 'stat'); row.appendChild(el('span', k)); row.appendChild(el('b', v)); side.appendChild(row);
+      });
+      side.appendChild(el('h3', 'Fill-ups'));
+      let k = 0;
+      trip.fuel_stops.forEach(s => {
+        const card = el('div', undefined, 'stop');
+        card.appendChild(el('h4', (s.kind === 'station' ? (++k) + '. ' : '') + s.name));
+        stopLines(s).forEach(t => card.appendChild(el('div', t)));
+        side.appendChild(card);
+      });
+      side.appendChild(el('small', 'Departure fill-up priced at $' + sum.departure_price_per_gallon.toFixed(3) + ' - ' + sum.departure_price_source));
+    </script>
+  {% elif not error %}
+    <div class="empty">Enter a start and finish in the USA to see the route and the cheapest fuel stops.</div>
+  {% endif %}
+</body>
+</html>
